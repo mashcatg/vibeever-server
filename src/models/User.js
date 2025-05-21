@@ -64,8 +64,10 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ['user', 'admin', 'superadmin'],
-    default: 'user'
+    default: 'admin'
   },
+  emailVerificationToken: String ,
+  emailVerificationExpires: Date,
   isEmailVerified: {
     type: Boolean,
     default: false

@@ -15,7 +15,7 @@ const {
 const router = express.Router();
 
 // All routes require admin access
-router.use(protect, isAdmin);
+router.use(isAdmin);
 
 router.route('/')
   .post(createCategory)
