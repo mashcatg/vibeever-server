@@ -328,3 +328,24 @@ exports.changePassword = async (req, res) => {
     });
   }
 };
+
+
+exports.recentUsers = async (req, res) => {
+  try {
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('fullName email createdAt');
+
+    res.status(200).json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Error fetching recent users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching recent users'
+    });
+  }
+};
