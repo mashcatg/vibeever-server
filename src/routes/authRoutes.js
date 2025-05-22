@@ -8,8 +8,10 @@ const {
   verifyEmail,
   resendVerification,
   verifyResetToken,
-  googleAuthCallback
+  googleAuthCallback,
+  changePassword
 } = require('../controllers/authController');
+const { protect } = require('../middleware/authMiddleware');
 
 // Auth routes
 router.post('/register', register);
@@ -20,5 +22,5 @@ router.get('/verify-email/:token', verifyEmail);
 router.post('/resend-verification', resendVerification);
 router.get('/verify-reset-token/:token', verifyResetToken);
 router.get('/google/callback', googleAuthCallback);
-
+router.put('/change-password', protect, changePassword);
 module.exports = router;

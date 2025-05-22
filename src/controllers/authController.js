@@ -292,3 +292,39 @@ exports.verifyResetToken = async (req, res) => {
     });
   }
 };
+
+ 
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    const user = await User.findById(req.user._id);
+
+    const isMatch = await bcrypt.compare(currentPassword + user.salt, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect"
+      });
+    }
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(newPassword + salt, 10);
+
+    user.passwordHash = passwordHash;
+    user.salt = salt;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully"
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: "Error changing password"
+    });
+  }
+};
