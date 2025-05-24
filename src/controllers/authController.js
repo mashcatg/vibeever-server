@@ -220,19 +220,68 @@ exports.login = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
-  if (!user) return res.status(404).json({ message: 'User not found' });
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
 
-  const token = user.generatePasswordReset();
-  await user.save();
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
 
-  const link = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-  await sendEmail({
-    to: user.email,
-    subject: 'Reset your password',
-    html: `Click <a href="${link}">here</a> to reset your password`
-  });
-  res.status(200).json({ message: 'Reset email sent' });
+   
+    user.resetPasswordToken = hashedResetToken;
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000;  
+    await user.save();
+
+   
+    const resetURL = `${process.env.FRONTEND_URL}/set-new-password/${resetToken}`;
+
+    
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request - VibeEver',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h1>Password Reset</h1>
+          <p>Hi ${user.fullName},</p>
+          <p>Click the button below to reset your password:</p>
+          <a href="${resetURL}" 
+             style="display: inline-block; padding: 12px 24px; 
+                    background-color: #4F46E5; color: white; 
+                    text-decoration: none; border-radius: 5px; 
+                    margin: 20px 0;">
+            Reset Password
+          </a>
+          <p>If the button doesn't work, copy and paste this link:</p>
+          <p>${resetURL}</p>
+          <p>This link will expire in 1 hour.</p>
+        </body>
+        </html>
+      `
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset email sent'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending reset email'
+    });
+  }
 };
 
 exports.resetPassword = async (req, res) => {

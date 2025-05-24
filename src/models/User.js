@@ -68,11 +68,13 @@ const userSchema = new mongoose.Schema({
   },
   emailVerificationToken: String ,
   emailVerificationExpires: Date,
+  resetPasswordToken: String ,
+  resetPasswordExpires: Date,
   isEmailVerified: {
     type: Boolean,
     default: false
   },
-  googleId: String
+  googleId: String,
 });
 
 userSchema.pre('save', async function(next) {
