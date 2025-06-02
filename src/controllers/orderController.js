@@ -2,7 +2,9 @@ const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// Create checkout session
+
+
+//checkout 
 exports.createCheckoutSession = async (req, res) => {
   try {
     const cart = await Cart.findOne({ user: req.user._id })
@@ -41,22 +43,26 @@ exports.createCheckoutSession = async (req, res) => {
 
     res.json({ url: session.url });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message }); 
   }
 };
+
 
 // Process successful payment and create order
 exports.processPayment = async (req, res) => {
   try {
-    const { sessionId } = req.body;
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const { sessionId } = req.body; 
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId); 
     
-    const cart = await Cart.findById(session.metadata.cartId)
+
+    const cart = await Cart.findById(session.metadata.cartId) 
+
       .populate('items.product')
       .populate('coupon');
 
     // Create order
-    const order = await Order.create({
+    const order = await Order.create({ 
       user: session.metadata.userId,
       items: cart.items.map(item => ({
         product: item.product._id,
@@ -77,16 +83,16 @@ exports.processPayment = async (req, res) => {
     });
 
     // Clear cart
-    await Cart.findByIdAndDelete(cart._id);
+    await Cart.findByIdAndDelete(cart._id); 
 
-    res.json(order);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.json(order); 
+  } catch (error) {  
+    res.status(400).json({ message: error.message }); 
   }
 };
 
 // Get orders with filtering (admin)
-exports.getOrders = async (req, res) => {
+exports.getOrders = async (req, res) => { 
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -95,7 +101,7 @@ exports.getOrders = async (req, res) => {
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
     const sortBy = req.query.sortBy || 'createdAt';
-    const order = req.query.order || 'desc';
+    const order = req.query.order || 'desc'; 
 
     let query = {};
 

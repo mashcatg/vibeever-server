@@ -3,6 +3,7 @@ const User = require('../models/User');
 
 module.exports = async (req, res, next) => {
   const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
+  console.log(token , "token");
   if (!token) return res.status(401).json({ message: 'Not authorized' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

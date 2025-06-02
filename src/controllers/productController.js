@@ -53,9 +53,11 @@ exports.getProducts = async (req, res) => {
     const order = req.query.order || 'desc';
 
     const query = buildQuery(req.query);
+
+    console.log(req?.user?.role , "req?.user?.role");
     
     // Non-admin users can only see published products
-    if (req.user.role === 'user') {
+    if (req?.user?.role === 'user' || req?.user?.role === undefined) {
       query.isPublished = true;
     }
 

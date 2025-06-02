@@ -13,8 +13,8 @@ const {
 const router = express.Router();
 
 // Public routes
-router.post('/create-checkout-session', protect, createCheckoutSession);
-router.post('/process-payment', protect, processPayment);
+router.post('/create-checkout-session', protect, createCheckoutSession );
+router.post('/process-payment', protect, processPayment );
 
 // User purchase routes
 router.get('/purchases', protect, getUserPurchases);
