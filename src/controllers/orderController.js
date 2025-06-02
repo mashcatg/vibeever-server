@@ -15,29 +15,36 @@ exports.createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    // Create line items for Stripe
+    // Create line items for Stripe with explicit USD currency
     const lineItems = cart.items.map(item => ({
       price_data: {
         currency: 'usd',
         product_data: {
           name: item.product.title,
-          description: item.product.description
+          description: item.product.description,
+          // Optional: Add metadata to ensure USD
+          metadata: {
+            currency: 'usd'
+          }
         },
         unit_amount: Math.round(item.product.finalPrice * 100)
       },
       quantity: item.quantity
     }));
 
-    // Create Stripe session
+    // Create Stripe session with currency enforcement
     const session = await stripe.checkout.sessions.create({
       customer_email: req.user.email,
       line_items: lineItems,
       mode: 'payment',
+      currency: 'usd', // Explicitly set USD as currency
+      payment_method_types: ['card'],
       success_url: `${process.env.FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cart`,
       metadata: {
         userId: req.user._id.toString(),
-        cartId: cart._id.toString()
+        cartId: cart._id.toString(),
+        currency: 'usd'
       }
     });
 
@@ -209,7 +216,7 @@ exports.getUserPurchases = async (req, res) => {
       user: req.user._id,
       status: 'completed'
     })
-    .populate('items.product', 'title description thumbnailUrls downloads')
+    .populate('items.product', 'title description thumbnailUrls downloads tags , price finalPrice')
     .sort({ createdAt: -1 });
 
     // Flatten and format purchased products

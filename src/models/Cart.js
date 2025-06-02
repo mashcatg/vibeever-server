@@ -32,6 +32,12 @@ const CartSchema = new mongoose.Schema({
   total: {
     type: Number,
     default: 0
+  },
+  currency: {
+    type: String,
+    default: 'usd',
+    enum: ['usd'],  
+    required: true
   }
 }, {
   timestamps: true
