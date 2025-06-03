@@ -105,3 +105,54 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getUserStats = async (req, res) => {
+  try {
+    // Aggregate user statistics
+    const stats = await Order.aggregate([
+      {
+        $match: {
+          user: req.user._id,
+          status: 'completed'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalTransactions: { $sum: '$total' },
+          totalProducts: { $sum: { $size: '$items' } }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalOrders: 1,
+          totalTransactions: { $round: ['$totalTransactions', 2] },
+          totalProducts: 1
+        }
+      }
+    ]);
+
+    // If no orders found, return default values
+    const userStats = stats[0] || {
+      totalOrders: 0,
+      totalTransactions: 0,
+      totalProducts: 0
+    };
+
+    res.json({
+      success: true,
+      stats: userStats
+    });
+
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching user statistics' 
+    });
+  }
+};
+
+

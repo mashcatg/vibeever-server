@@ -3,7 +3,8 @@ const { protect } = require('../middleware/authMiddleware');
 const { 
   getProfile,
   getTransactionHistory,
-  updateProfile
+  updateProfile,
+  getUserStats
 } = require('../controllers/profileController');
 
 const router = express.Router();
@@ -13,5 +14,10 @@ router.get('/', getProfile);
 router.get('/transactions', getTransactionHistory);
 
 router.put('/update-profile'  , updateProfile)
+
+router.get('/get-stats' , getUserStats)
+
+
+
 
 module.exports = router;
