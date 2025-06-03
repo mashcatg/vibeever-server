@@ -75,3 +75,33 @@ exports.getTransactionHistory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+//update 
+exports.updateProfile = async (req, res) => {
+  try {
+    const { fullName, userName, phone, image, bio } = req.body;
+
+    const updateFields = {};
+    if (fullName) updateFields.fullName = fullName;
+    if (userName) updateFields.userName = userName;
+    if (phone) updateFields.phone = phone;
+    if (image) updateFields.image = image;
+    if (bio) updateFields.bio = bio;
+
+    // Check if any fields were provided
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: 'No fields provided for update' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    ).select('-passwordHash -salt');
+
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

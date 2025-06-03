@@ -53,6 +53,18 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please provide your name'],
     trim: true
   },
+  userName: {
+    type: String,
+  },
+  
+  bio:{
+    type:String 
+  } ,
+  image: {
+    type: String,
+    default: 'https://img.freepik.com/free-vector/young-prince-vector-illustration_1308-174367.jpg?semt=ais_hybrid&w=740' 
+  },
+ 
   email: {
     type: String,
     required: [true, 'Please provide your email'],
