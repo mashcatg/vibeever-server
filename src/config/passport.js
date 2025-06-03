@@ -1,6 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
+const crypto = require('crypto');
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
@@ -20,8 +21,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-      scope: ['profile', 'email']
+      callbackURL: '/api/auth/google/callback'
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -29,12 +29,13 @@ passport.use(
         let user = await User.findOne({ email: profile.emails[0].value });
 
         if (!user) {
-          // Create new user if doesn't exist
+          // Create new user
           user = await User.create({
             email: profile.emails[0].value,
             fullName: profile.displayName,
             googleId: profile.id,
-            isEmailVerified: true
+            isEmailVerified: true,
+            password: crypto.randomBytes(16).toString('hex') // random password for Google users
           });
         }
 

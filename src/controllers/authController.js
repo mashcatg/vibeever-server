@@ -302,8 +302,29 @@ exports.resetPassword = async (req, res) => {
 };
 
 exports.googleAuthCallback = async (req, res) => {
-  const token = generateToken(req.user);
-  res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}`);
+  try {
+    if (!req.user) {
+      return res.redirect(`${process.env.FRONTEND_URL}/auth/error?message=Authentication failed`);
+    }
+
+    // Use the same token generation function
+    const token = generateToken(req.user);
+
+    // Encode token for URL safety
+    const encodedToken = encodeURIComponent(token);
+
+    // Redirect with success parameters
+    res.redirect(
+      `${process.env.FRONTEND_URL}/auth/success?` + 
+      `token=${encodedToken}`
+    );
+
+  } catch (error) {
+    console.error('Google auth callback error:', error);
+    res.redirect(
+      `${process.env.FRONTEND_URL}/auth/error?message=Server error during authentication`
+    );
+  }
 };
 
 exports.verifyResetToken = async (req, res) => {
@@ -396,5 +417,30 @@ exports.recentUsers = async (req, res) => {
       success: false,
       message: 'Error fetching recent users'
     });
+  }
+};
+
+// Add this temporary test endpoint
+exports.testGoogleAuth = async (req, res) => {
+  try {
+    const testUser = {
+      _id: '123',
+      email: 'test@example.com',
+      role: 'user'
+    };
+
+    const token = generateToken({
+      id: testUser._id,
+      email: testUser.email,
+      role: testUser.role
+    });
+
+    res.json({
+      success: true,
+      token,
+      user: testUser
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
