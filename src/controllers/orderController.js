@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
+const Product = require('../models/Product');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
@@ -10,7 +11,6 @@ exports.createCheckoutSession = async (req, res) => {
     const cart = await Cart.findOne({ user: req.user._id })
       .populate('items.product')
       .populate('coupon');
-      
 
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
@@ -20,32 +20,33 @@ exports.createCheckoutSession = async (req, res) => {
     const lineItems = cart.items.map(item => ({
       price_data: {
         currency: 'usd',
+        unit_amount: Math.round(item.product.finalPrice * 100),
         product_data: {
           name: item.product.title,
-          description: item.product.description,
-          // Optional: Add metadata to ensure USD
-          metadata: {
-            currency: 'usd'
-          }
-        },
-        unit_amount: Math.round(item.product.finalPrice * 100)
+          description: item.product.description
+        }
       },
       quantity: item.quantity
     }));
 
-    // Create Stripe session with currency enforcement
+    // Create Stripe session with strict USD currency settings
     const session = await stripe.checkout.sessions.create({
       customer_email: req.user.email,
       line_items: lineItems,
       mode: 'payment',
-      currency: 'usd', // Explicitly set USD as currency
+      currency: 'usd',
+      locale: 'en', // Force English locale
       payment_method_types: ['card'],
+      payment_method_options: {
+        card: {
+          request_three_d_secure: 'automatic'
+        }
+      },
       success_url: `${process.env.FRONTEND_URL}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cart`,
       metadata: {
         userId: req.user._id.toString(),
-        cartId: cart._id.toString(),
-        currency: 'usd'
+        cartId: cart._id.toString()
       }
     });
 
@@ -217,7 +218,7 @@ exports.getUserPurchases = async (req, res) => {
       user: req.user._id,
       status: 'completed'
     })
-    .populate('items.product', 'title description thumbnailUrls downloads tags , price finalPrice')
+    .populate('items.product', 'title description thumbnailUrls downloads tags , price finalPrice download_url')
     .sort({ createdAt: -1 });
 
     // Flatten and format purchased products

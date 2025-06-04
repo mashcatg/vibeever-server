@@ -19,6 +19,8 @@ const ProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true 
   },
+  download_url : { type: String, required: true },
+  version: { type: String },
   tags: [{ type: String, trim: true }],
   thumbnailUrls: [{ type: String, required: true }],
   downloads: [DownloadSchema],
