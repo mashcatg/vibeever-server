@@ -10,6 +10,7 @@ exports.createCheckoutSession = async (req, res) => {
     const cart = await Cart.findOne({ user: req.user._id })
       .populate('items.product')
       .populate('coupon');
+      
 
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
@@ -39,7 +40,7 @@ exports.createCheckoutSession = async (req, res) => {
       mode: 'payment',
       currency: 'usd', // Explicitly set USD as currency
       payment_method_types: ['card'],
-      success_url: `${process.env.FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.FRONTEND_URL}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cart`,
       metadata: {
         userId: req.user._id.toString(),
