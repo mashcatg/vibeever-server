@@ -14,12 +14,16 @@ const {
 
 const router = express.Router();
 
+// public 
+router.get('/' , getCategories)
+
 // All routes require admin access
 router.use(isAdmin);
 
-router.route('/')
-  .post(createCategory)
-  .get(getCategories);
+router.post('/' , createCategory)
+//    
+
+
 
 router.route('/:id')
   .get(getCategory)
