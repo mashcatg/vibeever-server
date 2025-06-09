@@ -56,14 +56,89 @@ exports.createCheckoutSession = async (req, res) => {
   }
 };
 
+// Single product direct checkout
+exports.createDirectCheckoutSession = async (req, res) => {
+  try {
+    const { productId } = req.body;
+
+    // Find product
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Create line item for Stripe
+    const lineItem = {
+      price_data: {
+        currency: 'usd',
+        unit_amount: Math.round(product.finalPrice * 100),
+        product_data: {
+          name: product.title,
+          description: product.description
+        }
+      },
+      quantity: 1
+    };
+
+    // Create Stripe session
+    const session = await stripe.checkout.sessions.create({
+      customer_email: req.user.email,
+      line_items: [lineItem],
+      mode: 'payment',
+      currency: 'usd',
+      locale: 'en',
+      payment_method_types: ['card'],
+      payment_method_options: {
+        card: {
+          request_three_d_secure: 'automatic'
+        }
+      },
+      success_url: `${process.env.FRONTEND_URL}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/products/${productId}`,
+      metadata: {
+        userId: req.user._id.toString(),
+        productId: productId,
+        isDirectPurchase: 'true'
+      }
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
 
 // Process successful payment and create order
 exports.processPayment = async (req, res) => {
   try {
     const { sessionId } = req.body; 
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId); 
-    
+    // Check if it's a direct purchase
+    if (session.metadata.isDirectPurchase === 'true') {
+      const product = await Product.findById(session.metadata.productId);
+      
+      // Create order for single product
+      const order = await Order.create({
+        user: session.metadata.userId,
+        items: [{
+          product: product._id,
+          price: product.finalPrice,
+          quantity: 1
+        }],
+        subtotal: product.finalPrice,
+        total: product.finalPrice,
+        paymentId: session.payment_intent,
+        paymentMethod: 'stripe',
+        status: 'completed',
+        downloads: [{
+          product: product._id,
+          downloadCount: 0
+        }]
+      });
+
+      return res.json(order);
+    }
 
     const cart = await Cart.findById(session.metadata.cartId) 
 

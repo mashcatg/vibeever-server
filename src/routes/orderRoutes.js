@@ -7,7 +7,8 @@ const {
   getOrders,
   getAnalytics,
   getUserPurchases,
-  downloadProduct
+  downloadProduct,
+  createDirectCheckoutSession
 } = require('../controllers/orderController');
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.post('/process-payment', protect, processPayment );
 router.get('/purchases', protect, getUserPurchases);
 router.get('/download/:orderId/:productId', protect, downloadProduct);
 
+
+// single 
+router.post('/direct', protect, createDirectCheckoutSession);
 // Admin routes
 router.use(protect, isAdmin);
 router.get('/', getOrders);
