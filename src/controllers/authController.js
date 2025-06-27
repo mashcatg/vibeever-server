@@ -307,18 +307,16 @@ exports.googleAuthCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/auth/error?message=Authentication failed`);
     }
 
-    // Use the same token generation function
     const token = generateToken(req.user);
-
-    // Encode token for URL safety
     const encodedToken = encodeURIComponent(token);
 
-    // Redirect with success parameters
-    res.redirect(
-      `${process.env.FRONTEND_URL}/auth/success?` + 
-      `token=${encodedToken}`
-    );
+    // Read state param (which is the redirect path)
+    const redirect = req.query.state || '/';
 
+    // Redirect with token and redirect param
+    res.redirect(
+      `${process.env.FRONTEND_URL}/auth/success?token=${encodedToken}&redirect=${encodeURIComponent(redirect)}`
+    );
   } catch (error) {
     console.error('Google auth callback error:', error);
     res.redirect(

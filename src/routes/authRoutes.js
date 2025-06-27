@@ -27,12 +27,15 @@ router.post('/reset-password/:token', resetPassword);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/resend-verification', resendVerification);
 router.get('/verify-reset-token/:token', verifyResetToken);
-router.get('/google', 
-  passport.authenticate('google', { 
+router.get('/google', (req, res, next) => {
+  const { redirect } = req.query;
+  // Use passport.authenticate as middleware, passing state
+  passport.authenticate('google', {
     scope: ['profile', 'email'],
-    session: false 
-  })
-);
+    session: false,
+    state: redirect || '/', // pass redirect as state
+  })(req, res, next);
+});
 
 router.get('/google/callback',
   passport.authenticate('google', { 
