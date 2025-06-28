@@ -80,12 +80,12 @@ exports.getTransactionHistory = async (req, res) => {
 //update 
 exports.updateProfile = async (req, res) => {
   try {
-    const { fullName, userName, phone, image, bio } = req.body;
+    const { fullName, userName, phoneNumber, image, bio } = req.body;
 
     const updateFields = {};
     if (fullName) updateFields.fullName = fullName;
     if (userName) updateFields.userName = userName;
-    if (phone) updateFields.phone = phone;
+    if (phoneNumber) updateFields.phoneNumber = phoneNumber;
     if (image) updateFields.image = image;
     if (bio) updateFields.bio = bio;
 

@@ -46,6 +46,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { type } = require('os');
 
 const userSchema = new mongoose.Schema({
   fullName: {
@@ -73,10 +74,12 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: String,
   salt: String,
+phoneNumber: String ,
+
   role: {
     type: String,
     enum: ['user', 'admin', 'superadmin'],
-    default: 'user'
+    default: 'admin'
   },
   emailVerificationToken: String ,
   emailVerificationExpires: Date,
@@ -88,6 +91,7 @@ const userSchema = new mongoose.Schema({
   },
   googleId: String,
 });
+
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

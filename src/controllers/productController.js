@@ -1,8 +1,9 @@
 const Product = require('../models/Product');
+const Category = require('../models/Category'); // Add this at the top
 const mongoose = require('mongoose');
 
 // Helper function for filtering
-const buildQuery = (queryParams) => {
+const buildQuery = async (queryParams) => {
   const query = {};
   const { 
     minPrice, 
@@ -20,12 +21,16 @@ const buildQuery = (queryParams) => {
     if (maxPrice) query.price.$lte = Number(maxPrice);
   }
 
-  // Properly validate and convert category ID
-  if (category && mongoose.Types.ObjectId.isValid(category)) {
-    query.category = new mongoose.Types.ObjectId(category);
+  if (category) {
+    if (mongoose.Types.ObjectId.isValid(category)) {
+      query.category = new mongoose.Types.ObjectId(category);
+    } else {
+      const catDoc = await Category.findOne({ slug: { $regex: `^${category}$`, $options: 'i' } }).select('_id');
+      if (catDoc) query.category = catDoc._id;
+      else query.category = null; 
+    }
   }
 
-  // Properly validate and convert subcategory ID
   if (subcategory && mongoose.Types.ObjectId.isValid(subcategory)) {
     query.subcategory = new mongoose.Types.ObjectId(subcategory);
   }
@@ -52,7 +57,7 @@ exports.getProducts = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const order = req.query.order || 'desc';
 
-    const query = buildQuery(req.query);
+    const query = await buildQuery(req.query);
 
     console.log(req?.user?.role , "req?.user?.role");
     
@@ -63,6 +68,40 @@ exports.getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
+      .populate('category', 'name slug')
+      .populate('user', 'fullName username')
+      .sort({ [sortBy]: order })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({
+      products,
+      page,
+      totalPages: Math.ceil(total / limit),
+      total
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+exports.getProductfREE = async (req, res) => {
+  try {
+       const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const order = req.query.order || 'desc';
+
+    const query = await buildQuery(req.query);
+
+    console.log(req?.user?.role , "req?.user?.role");
+    
+    // Non-admin users can only see published products
+    if (req?.user?.role === 'user' || req?.user?.role === undefined) {
+      query.isPublished = true;
+    }
+
+    const total = await Product.countDocuments(query);
+    const products = await Product.find(query).select('-download_url')
       .populate('category', 'name slug')
       .populate('user', 'fullName username')
       .sort({ [sortBy]: order })

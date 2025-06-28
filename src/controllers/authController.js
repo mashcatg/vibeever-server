@@ -216,7 +216,7 @@ exports.login = async (req, res) => {
 
   if (!user.isEmailVerified) return res.status(403).json({ message: 'Email not verified' });
   const token = generateToken(user);
-  res.status(200).json({ token, user: { id: user._id, fullName: user.fullName, role: user.role ,image: user.image , } });
+  res.status(200).json({ token, user: { id: user._id, fullName: user.fullName, role: user.role ,image: user.image , email: user.email , phoneNumber : user?.phoneNumber } });
 };
 
 exports.forgotPassword = async (req, res) => {

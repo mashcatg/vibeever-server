@@ -6,13 +6,14 @@ const {
   getProduct,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getProductfREE
 } = require('../controllers/productController');
 
 const router = express.Router();
 
 router.get('/',protect,  getProducts);
-router.get('/products-home',   getProducts);
+router.get('/products-home',   getProductfREE);
 router.get('/:id', protect, getProduct);
 
 // Admin only routes
