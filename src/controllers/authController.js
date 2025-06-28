@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/sendEmail');
 const { generateToken } = require('../utils/generateJWT');
+const Order = require('../models/Order');
 
 exports.register = async (req, res) => {
   try {
@@ -398,22 +399,61 @@ exports.changePassword = async (req, res) => {
 };
 
 
-exports.recentUsers = async (req, res) => {
+
+ 
+exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find()
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const users = await User.find(query)
       .sort({ createdAt: -1 })
-      .limit(5)
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
       .select('fullName email createdAt');
+
+    // Get all user IDs
+    const userIds = users.map(u => u._id);
+
+    // Aggregate total order amount for each user
+    const orders = await Order.aggregate([
+      { $match: { user: { $in: userIds } } },
+      { $group: { _id: '$user', totalOrderAmount: { $sum: '$total' } } }
+    ]);
+
+    // Map userId to totalOrderAmount
+    const orderMap = {};
+    orders.forEach(o => {
+      orderMap[o._id.toString()] = o.totalOrderAmount;
+    });
+
+    // Attach totalOrderAmount to each user
+    const usersWithOrderTotals = users.map(user => ({
+      ...user.toObject(),
+      totalOrderAmount: orderMap[user._id.toString()] || 0
+    }));
+
+    const total = await User.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      data: users
+      data: usersWithOrderTotals,
+      total,
+      page: Number(page),
+      limit: Number(limit)
     });
   } catch (error) {
-    console.error('Error fetching recent users:', error);
+    console.error('Error fetching users:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching recent users'
+      message: 'Error fetching users'
     });
   }
 };

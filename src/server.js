@@ -38,7 +38,7 @@ app.post('/api/webhook',
 // Regular middleware for other routes
 app.use(express.json());
 app.use(cookieParser());
-app.use(rateLimiter);
+// app.use(rateLimiter);
 app.use(passport.initialize());
 
 // Mount routes

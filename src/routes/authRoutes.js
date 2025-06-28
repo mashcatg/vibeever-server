@@ -12,7 +12,7 @@ const {
   verifyResetToken,
   googleAuthCallback,
   changePassword,
-  recentUsers,
+  getAllUsers,
   testGoogleAuth
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
@@ -49,7 +49,7 @@ router.put('/change-password', protect, changePassword);
 
 // user 
 
-router.get("/recent-users" , isAdmin , recentUsers  )
+router.get("/users" , isAdmin , getAllUsers  )
 
 // Add for testing only
 
