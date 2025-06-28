@@ -21,6 +21,9 @@ const ProductSchema = new mongoose.Schema({
   },
   download_url : { type: String, required: true },
   version: { type: String },
+  benefits: [{type: String, trim: true }],
+  files : [{ type: String, trim: true }],
+
   tags: [{ type: String, trim: true }],
   thumbnailUrls: [{ type: String, required: true }],
   downloads: [DownloadSchema],

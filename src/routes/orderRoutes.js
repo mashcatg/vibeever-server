@@ -23,7 +23,7 @@ router.get('/download/:orderId/:productId', protect, downloadProduct);
 
 
 // single 
-router.post('/direct', protect, createDirectCheckoutSession);
+router.post('/directStripe', protect, createDirectCheckoutSession);
 
 
 
