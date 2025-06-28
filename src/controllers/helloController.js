@@ -23,7 +23,7 @@ exports.getHello = async (req, res) => {
     if (req.user.role === 'admin') {
       helps = await helloModel.find();
     } else {
-      helps = await helloModel.find({ email: req.user.email });
+      helps = await helloModel.find({ email: req.user.email  })
     }
     res.json(helps);
   } catch (err) {
