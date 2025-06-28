@@ -17,6 +17,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
+const helloRoutes = require('./routes/helloRoutes');
 
 const app = express();
 
@@ -49,6 +50,10 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/wishlist', wishlistRoutes);
+
+// hello route 
+app.use('/api/hello' , helloRoutes)
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
