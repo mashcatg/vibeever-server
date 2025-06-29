@@ -79,7 +79,7 @@ phoneNumber: String ,
   role: {
     type: String,
     enum: ['user', 'admin', 'superadmin'],
-    default: 'admin'
+    default: 'user'
   },
   emailVerificationToken: String ,
   emailVerificationExpires: Date,

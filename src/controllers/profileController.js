@@ -82,13 +82,13 @@ exports.updateProfile = async (req, res) => {
   try {
     const { fullName, userName, phoneNumber, image, bio } = req.body;
 
-    const updateFields = {};
+    const updateFields = { };
     if (fullName) updateFields.fullName = fullName;
     if (userName) updateFields.userName = userName;
     if (phoneNumber) updateFields.phoneNumber = phoneNumber;
     if (image) updateFields.image = image;
     if (bio) updateFields.bio = bio;
-
+   
     // Check if any fields were provided
     if (Object.keys(updateFields).length === 0) {
       return res.status(400).json({ message: 'No fields provided for update' });
