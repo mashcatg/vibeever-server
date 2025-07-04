@@ -6,10 +6,12 @@ const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/sendEmail');
 const { generateToken } = require('../utils/generateJWT');
 const Order = require('../models/Order');
+const TempUser = require('../models/TempUser');
+
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, password, userName } = req.body;
 
     // Validation
     if (!fullName || !email || !password) {
@@ -19,7 +21,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -28,31 +29,33 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(verificationToken)
-      .digest('hex');
-
-    // Create salt and hash password
+    const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
     const salt = crypto.randomBytes(16).toString('hex');
     const passwordHash = await bcrypt.hash(password + salt, 10);
 
-    // Create user with hashed token
-    const user = await User.create({
-      fullName,
-      email,
-      passwordHash,
-      salt,
-      emailVerificationToken: hashedToken,
-      emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000,
-      isEmailVerified: false
-    });
+    let tempUser = await TempUser.findOne({ email });
+    if (tempUser) {
+      tempUser.fullName = fullName;
+      tempUser.userName = userName;
+      tempUser.passwordHash = passwordHash;
+      tempUser.salt = salt;
+      tempUser.emailVerificationToken = hashedToken;
+      tempUser.emailVerificationExpires = Date.now() + 3 * 60 * 1000;
+      await tempUser.save();
+    } else {
+      await TempUser.create({
+        fullName,
+        email,
+        userName,
+        passwordHash,
+        salt,
+        emailVerificationToken: hashedToken,
+        emailVerificationExpires: Date.now() + 3 * 60 * 1000 
+      });
+    }
 
-    // Send verification email with unhashed token
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-    
     await sendEmail({
       to: email,
       subject: 'Welcome to VibeEver - Verify Your Email',
@@ -72,7 +75,7 @@ exports.register = async (req, res) => {
           </a>
           <p>If the button doesn't work, copy and paste this link:</p>
           <p>${verificationURL}</p>
-          <p>This link will expire in 24 hours.</p>
+          <p>This link will expire in 3 minutes.</p>
         </body>
         </html>
       `
@@ -80,8 +83,8 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Registration successful. Please check your email for verification.",
-      email: user.email
+      message: "Registration started. Please check your email for verification.",
+      email
     });
 
   } catch (error) {
@@ -96,37 +99,37 @@ exports.register = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-    console.log('Received token:', token); // Debug log
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    // Hash the token
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
-    console.log('Hashed token:', hashedToken); // Debug log
-
-    const user = await User.findOne({
+    //  temp 
+    const tempUser = await TempUser.findOne({
       emailVerificationToken: hashedToken,
       emailVerificationExpires: { $gt: Date.now() }
     });
 
-    if (!user) {
-      console.log('No user found with token'); // Debug log
+    if (!tempUser) {
       return res.status(400).json({
         success: false,
         message: 'Verification failed. The link may be expired or invalid.'
       });
     }
 
-    // Update user
-    user.isEmailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
-    await user.save();
+    //  collection
+    await User.create({
+      fullName: tempUser.fullName,
+      email: tempUser.email,
+      userName: tempUser.userName,
+      passwordHash: tempUser.passwordHash,
+      salt: tempUser.salt,
+      isEmailVerified: true
+    });
+
+    // remove  tempUser
+    await TempUser.deleteOne({ _id: tempUser._id });
 
     res.status(200).json({
       success: true,
-      message: 'Email verified successfully'
+      message: 'Email verified and account created successfully'
     });
   } catch (error) {
     console.error('Verification error:', error);
@@ -140,7 +143,7 @@ exports.verifyEmail = async (req, res) => {
 exports.resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log('Resend requested for:', email); // Debug log
+    console.log('Resend requested for:', email);  
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -157,7 +160,6 @@ exports.resendVerification = async (req, res) => {
       });
     }
 
-    // Generate new verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto
       .createHash('sha256')
