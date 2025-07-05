@@ -7,27 +7,30 @@ exports.getProfile = async (req, res) => {
     const user = await User.findById(req.user._id)
       .select('-passwordHash -salt');
 
-    const stats = {
-      totalOrders: await Order.countDocuments({ 
-        user: req.user._id,
-        status: 'completed'
-      }),
-      totalSpent: await Order.aggregate([
-        { 
-          $match: { 
-            user: req.user._id,
-            status: 'completed'
+      
+      const stats = {
+        totalOrders: await Order.countDocuments({ 
+          user: req.user._id,
+          status: 'completed'
+        }),
+        totalSpent: await Order.aggregate([
+          { 
+            $match: { 
+              user: req.user._id,
+              status: 'completed'
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$total' }
+            }
           }
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$total' }
-          }
-        }
-      ]).then(result => result[0]?.total || 0)
-    };
-
+        ]).then(result => result[0]?.total || 0)
+      };
+      console.log(user,
+      stats);
+      
     res.json({
       user,
       stats
