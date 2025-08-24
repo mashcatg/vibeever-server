@@ -419,7 +419,7 @@ exports.getAllUsers = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
-      .select('fullName email createdAt');
+      .select('fullName email image createdAt');
 
     // Get all user IDs
     const userIds = users.map(u => u._id);
