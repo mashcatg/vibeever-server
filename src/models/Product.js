@@ -38,12 +38,15 @@ const ProductSchema = new mongoose.Schema({
       type: String,
       enum: ['percentage', 'fixed'],
     },
-    value: {
-      type: Number,
-    },
+   
     startDate: Date,
     endDate: Date
   },
+   slug : { type: String, required: true, unique: true },
+    value: {
+      type: Number,
+    },
+   storeId: { type: mongoose.Schema.Types.ObjectId, ref: "Store", required: true },
   finalPrice: {
     type: Number,
     default: function() {

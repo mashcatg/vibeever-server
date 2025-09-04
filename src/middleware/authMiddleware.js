@@ -4,17 +4,19 @@ const User = require('../models/User');
 exports.protect = async (req, res, next) => {
   try {
     const token = req.headers.authorization;
-
     if (!token) return res.status(401).json({ message: 'Not authorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = await User.findById(decoded.id).select('-passwordHash -salt');
+    const user = await User.findById(decoded.id).select('-passwordHash -salt');
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (!req.user) return res.status(404).json({ message: 'User not found' });
+    req.user = user;
+    req.role = user.role;
+    req.storeId = user.role === 'admin' ? user.storeId : null;
+    req.isSuperAdmin = user.role === 'superadmin';
 
-    // Log the user's role
-    console.log('role:', req.user.role);
+    console.log('role:', req.role, 'storeId:', req.storeId);
 
     next();
   } catch (err) {

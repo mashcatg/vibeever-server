@@ -13,10 +13,15 @@ const {
   googleAuthCallback,
   changePassword,
   getAllUsers,
-  testGoogleAuth
+  testGoogleAuth,
+  applyAdmin,
+  getAllApplications,
+  approveStoreAndAdmin,
+  rejectAdmin
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
-const { isAdmin } = require('../middleware/adminAuth');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminAuth');
+const auth = require('../middleware/auth');
 
 // Auth routes
 router.post('/register', register);
@@ -52,5 +57,22 @@ router.put('/change-password', protect, changePassword);
 router.get("/users" , isAdmin , getAllUsers  )
 
 // Add for testing only
+
+
+
+//----------- store code here 
+
+router.post("/applyStore" , applyAdmin  )
+
+router.get("/getRequestedStore"  , getAllApplications )
+
+
+router.post("/approveStore" ,isSuperAdmin , approveStoreAndAdmin )
+router.post("/rejectStore" ,isSuperAdmin  , rejectAdmin )
+
+
+
+
+
 
 module.exports = router;

@@ -1,13 +1,13 @@
 // controllers/authController.js
-const User = require('../models/User');
-const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { sendEmail } = require('../utils/sendEmail');
-const { generateToken } = require('../utils/generateJWT');
-const Order = require('../models/Order');
-const TempUser = require('../models/TempUser');
-
+const User = require("../models/User");
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { sendEmail } = require("../utils/sendEmail");
+const { generateToken } = require("../utils/generateJWT");
+const Order = require("../models/Order");
+const TempUser = require("../models/TempUser");
+const Store = require("../models/storeModel");
 
 exports.register = async (req, res) => {
   try {
@@ -17,7 +17,7 @@ exports.register = async (req, res) => {
     if (!fullName || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide all required fields"
+        message: "Please provide all required fields",
       });
     }
 
@@ -25,13 +25,16 @@ exports.register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "Email already registered"
+        message: "Email already registered",
       });
     }
 
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
-    const salt = crypto.randomBytes(16).toString('hex');
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(verificationToken)
+      .digest("hex");
+    const salt = crypto.randomBytes(16).toString("hex");
     const passwordHash = await bcrypt.hash(password + salt, 10);
 
     let tempUser = await TempUser.findOne({ email });
@@ -51,14 +54,14 @@ exports.register = async (req, res) => {
         passwordHash,
         salt,
         emailVerificationToken: hashedToken,
-        emailVerificationExpires: Date.now() + 3 * 60 * 1000 
+        emailVerificationExpires: Date.now() + 3 * 60 * 1000,
       });
     }
 
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     await sendEmail({
       to: email,
-      subject: 'Welcome to VibeEver - Verify Your Email',
+      subject: "Welcome to VibeEver - Verify Your Email",
       html: `
         <!DOCTYPE html>
         <html>
@@ -78,20 +81,20 @@ exports.register = async (req, res) => {
           <p>This link will expire in 3 minutes.</p>
         </body>
         </html>
-      `
+      `,
     });
 
     res.status(201).json({
       success: true,
-      message: "Registration started. Please check your email for verification.",
-      email
+      message:
+        "Registration started. Please check your email for verification.",
+      email,
     });
-
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
     res.status(500).json({
       success: false,
-      message: "Error during registration"
+      message: "Error during registration",
     });
   }
 };
@@ -99,18 +102,18 @@ exports.register = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-    //  temp 
+    //  temp
     const tempUser = await TempUser.findOne({
       emailVerificationToken: hashedToken,
-      emailVerificationExpires: { $gt: Date.now() }
+      emailVerificationExpires: { $gt: Date.now() },
     });
 
     if (!tempUser) {
       return res.status(400).json({
         success: false,
-        message: 'Verification failed. The link may be expired or invalid.'
+        message: "Verification failed. The link may be expired or invalid.",
       });
     }
 
@@ -121,7 +124,7 @@ exports.verifyEmail = async (req, res) => {
       userName: tempUser.userName,
       passwordHash: tempUser.passwordHash,
       salt: tempUser.salt,
-      isEmailVerified: true
+      isEmailVerified: true,
     });
 
     // remove  tempUser
@@ -129,13 +132,13 @@ exports.verifyEmail = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Email verified and account created successfully'
+      message: "Email verified and account created successfully",
     });
   } catch (error) {
-    console.error('Verification error:', error);
+    console.error("Verification error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error verifying email'
+      message: "Error verifying email",
     });
   }
 };
@@ -143,28 +146,28 @@ exports.verifyEmail = async (req, res) => {
 exports.resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log('Resend requested for:', email);  
+    console.log("Resend requested for:", email);
 
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
     if (user.isEmailVerified) {
       return res.status(400).json({
         success: false,
-        message: 'Email is already verified'
+        message: "Email is already verified",
       });
     }
 
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(verificationToken)
-      .digest('hex');
+      .digest("hex");
 
     // Update user with new token
     user.emailVerificationToken = hashedToken;
@@ -175,7 +178,7 @@ exports.resendVerification = async (req, res) => {
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     await sendEmail({
       to: user.email,
-      subject: 'VibeEver - New Verification Link',
+      subject: "VibeEver - New Verification Link",
       html: `
         <!DOCTYPE html>
         <html>
@@ -193,18 +196,18 @@ exports.resendVerification = async (req, res) => {
           <p>This link will expire in 24 hours.</p>
         </body>
         </html>
-      `
+      `,
     });
 
     res.status(200).json({
       success: true,
-      message: 'New verification email sent successfully'
+      message: "New verification email sent successfully",
     });
   } catch (error) {
-    console.error('Resend verification error:', error);
+    console.error("Resend verification error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error sending verification email'
+      message: "Error sending verification email",
     });
   }
 };
@@ -212,45 +215,53 @@ exports.resendVerification = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+  if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
   const valid = await bcrypt.compare(password + user.salt, user.passwordHash);
-  if (!valid) return res.status(400).json({ message: 'Invalid credentials' });
+  if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
-  if (!user.isEmailVerified) return res.status(403).json({ message: 'Email not verified' });
+  if (!user.isEmailVerified)
+    return res.status(403).json({ message: "Email not verified" });
   const token = generateToken(user);
-  res.status(200).json({ token, user: { id: user._id, fullName: user.fullName, role: user.role ,image: user.image , email: user.email , phoneNumber : user?.phoneNumber } });
+  res.status(200).json({
+    token,
+    user: {
+      id: user._id,
+      fullName: user.fullName,
+      role: user.role,
+      image: user.image,
+      email: user.email,
+      phoneNumber: user?.phoneNumber,
+    },
+  });
 };
 
 exports.forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'User not found' 
+        message: "User not found",
       });
     }
 
     // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetToken = crypto.randomBytes(32).toString("hex");
     const hashedResetToken = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(resetToken)
-      .digest('hex');
+      .digest("hex");
 
-   
     user.resetPasswordToken = hashedResetToken;
-    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000;  
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000;
     await user.save();
 
-   
     const resetURL = `${process.env.FRONTEND_URL}/set-new-password/${resetToken}`;
 
-    
     await sendEmail({
       to: user.email,
-      subject: 'Password Reset Request - VibeEver',
+      subject: "Password Reset Request - VibeEver",
       html: `
         <!DOCTYPE html>
         <html>
@@ -270,58 +281,67 @@ exports.forgotPassword = async (req, res) => {
           <p>This link will expire in 1 hour.</p>
         </body>
         </html>
-      `
+      `,
     });
 
     res.status(200).json({
       success: true,
-      message: 'Password reset email sent'
+      message: "Password reset email sent",
     });
-
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error("Forgot password error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error sending reset email'
+      message: "Error sending reset email",
     });
   }
 };
 
 exports.resetPassword = async (req, res) => {
-  const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
   const user = await User.findOne({
     resetPasswordToken: hashedToken,
     resetPasswordExpires: { $gt: Date.now() },
   });
-  if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
+  if (!user)
+    return res.status(400).json({ message: "Invalid or expired token" });
 
-  const salt = crypto.randomBytes(16).toString('hex');
+  const salt = crypto.randomBytes(16).toString("hex");
   user.passwordHash = await bcrypt.hash(req.body.password + salt, 10);
   user.salt = salt;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpires = undefined;
   await user.save();
-  res.status(200).json({ message: 'Password updated successfully' });
+  res.status(200).json({ message: "Password updated successfully" });
 };
 
 exports.googleAuthCallback = async (req, res) => {
   try {
     if (!req.user) {
-      return res.redirect(`${process.env.FRONTEND_URL}/auth/error?message=Authentication failed`);
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/auth/error?message=Authentication failed`
+      );
     }
 
     const token = generateToken(req.user);
     const encodedToken = encodeURIComponent(token);
 
     // Read state param (which is the redirect path)
-    const redirect = req.query.state || '/';
+    const redirect = req.query.state || "/";
 
     // Redirect with token and redirect param
     res.redirect(
-      `${process.env.FRONTEND_URL}/auth/success?token=${encodedToken}&redirect=${encodeURIComponent(redirect)}`
+      `${
+        process.env.FRONTEND_URL
+      }/auth/success?token=${encodedToken}&redirect=${encodeURIComponent(
+        redirect
+      )}`
     );
   } catch (error) {
-    console.error('Google auth callback error:', error);
+    console.error("Google auth callback error:", error);
     res.redirect(
       `${process.env.FRONTEND_URL}/auth/error?message=Server error during authentication`
     );
@@ -331,56 +351,54 @@ exports.googleAuthCallback = async (req, res) => {
 exports.verifyResetToken = async (req, res) => {
   try {
     const { token } = req.params;
-    
+
     // Hash token for comparison
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     // Find user with valid reset token
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
+      resetPasswordExpires: { $gt: Date.now() },
     });
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired reset token'
+        message: "Invalid or expired reset token",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Token is valid'
+      message: "Token is valid",
     });
   } catch (error) {
-    console.error('Verify reset token error:', error);
+    console.error("Verify reset token error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error verifying token'
+      message: "Error verifying token",
     });
   }
 };
 
- 
-
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    
+
     const user = await User.findById(req.user._id);
 
-    const isMatch = await bcrypt.compare(currentPassword + user.salt, user.passwordHash);
+    const isMatch = await bcrypt.compare(
+      currentPassword + user.salt,
+      user.passwordHash
+    );
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        message: "Current password is incorrect"
+        message: "Current password is incorrect",
       });
     }
 
-    const salt = crypto.randomBytes(16).toString('hex');
+    const salt = crypto.randomBytes(16).toString("hex");
     const passwordHash = await bcrypt.hash(newPassword + salt, 10);
 
     user.passwordHash = passwordHash;
@@ -389,29 +407,26 @@ exports.changePassword = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Password updated successfully"
+      message: "Password updated successfully",
     });
   } catch (error) {
-    console.error('Change password error:', error);
+    console.error("Change password error:", error);
     res.status(500).json({
       success: false,
-      message: "Error changing password"
+      message: "Error changing password",
     });
   }
 };
 
-
-
- 
 exports.getAllUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    const { page = 1, limit = 10, search = "" } = req.query;
     const query = {};
 
     if (search) {
       query.$or = [
-        { fullName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -419,27 +434,27 @@ exports.getAllUsers = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
-      .select('fullName email image createdAt');
+      .select("fullName email image createdAt");
 
     // Get all user IDs
-    const userIds = users.map(u => u._id);
+    const userIds = users.map((u) => u._id);
 
     // Aggregate total order amount for each user
     const orders = await Order.aggregate([
       { $match: { user: { $in: userIds } } },
-      { $group: { _id: '$user', totalOrderAmount: { $sum: '$total' } } }
+      { $group: { _id: "$user", totalOrderAmount: { $sum: "$total" } } },
     ]);
 
     // Map userId to totalOrderAmount
     const orderMap = {};
-    orders.forEach(o => {
+    orders.forEach((o) => {
       orderMap[o._id.toString()] = o.totalOrderAmount;
     });
 
     // Attach totalOrderAmount to each user
-    const usersWithOrderTotals = users.map(user => ({
+    const usersWithOrderTotals = users.map((user) => ({
       ...user.toObject(),
-      totalOrderAmount: orderMap[user._id.toString()] || 0
+      totalOrderAmount: orderMap[user._id.toString()] || 0,
     }));
 
     const total = await User.countDocuments(query);
@@ -449,38 +464,199 @@ exports.getAllUsers = async (req, res) => {
       data: usersWithOrderTotals,
       total,
       page: Number(page),
-      limit: Number(limit)
+      limit: Number(limit),
     });
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error("Error fetching users:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching users'
+      message: "Error fetching users",
     });
   }
 };
 
-// Add this temporary test endpoint
-exports.testGoogleAuth = async (req, res) => {
+exports.applyAdmin = async (req, res) => {
   try {
-    const testUser = {
-      _id: '123',
-      email: 'test@example.com',
-      role: 'user'
-    };
+    const {
+      fullName,
+      email,
+      password,
+      userName,
+      storeName,
+      storeDescription,
+      attachments,
+      storeUsername,
+    } = req.body;
 
-    const token = generateToken({
-      id: testUser._id,
-      email: testUser.email,
-      role: testUser.role
+    if (
+      (!fullName ||
+        !email ||
+        !password ||
+        !storeName ||
+        !storeDescription ||
+        !storeUsername,
+      !userName,
+      !attachments)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      console.log("Existing user found:", existingUser);
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const existingStoreUsername = await Store.findOne({ storeUsername });
+
+    console.log(existingStoreUsername, "existingStoreUsername");
+    if (existingStoreUsername) {
+      return res.status(400).json({ message: "Store username already taken" });
+    }
+
+    // user
+    const salt = crypto.randomBytes(16).toString("hex");
+    const passwordHash = await bcrypt.hash(password + salt, 10);
+
+    const user = new User({
+      fullName,
+      email,
+      userName,
+      passwordHash,
+      salt,
+      role: "admin",
+      isEmailVerified: true,
     });
 
-    res.json({
-      success: true,
-      token,
-      user: testUser
+    const usersaves = await user.save();
+    console.log(usersaves);
+
+    const store = new Store({
+      ownerId: user._id,
+      storeName,
+      storeDescription,
+      attachments,
+      storeUsername,
+      status: "pending",
+    });
+
+    await store.save();
+
+    user.storeId = store._id;
+    await user.save();
+
+    res
+      .status(201)
+      .json({ message: "Vendor application submitted", user, store });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error applying as vendor", error: error.message });
+  }
+};
+
+exports.getAllApplications = async (req, res) => {
+  try {
+    const stores = await Store.find({ status: "pending" })
+      .populate("ownerId", "fullName email userName role")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "All vendor applications fetched successfully",
+      stores,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: "Error fetching vendor applications",
+      error: error.message,
+    });
+  }
+};
+
+exports.approveStoreAndAdmin = async (req, res) => {
+  try {
+    const { storeId } = req.body;
+
+    const store = await Store.findById(storeId).populate("ownerId");
+    if (!store) return res.status(404).json({ message: "Store not found" });
+
+    if (store.status !== "pending") {
+      return res
+        .status(400)
+        .json({ message: "Admin application already processed" });
+    }
+
+    store.status = "approved";
+    await store.save();
+
+    const user = await User.findById(store.ownerId._id);
+    console.log(user, "user to be approved");
+    if (user) {
+      user.role = "admin";
+      user.status = "approved";
+      await user.save();
+
+      // send welcome email
+      await sendEmail({
+        to: user.email,
+        subject: "Welcome to VibeEver - Your Admin Account is Approved",
+        html: `<p>Hi ${user.fullName}, your admin application is approved!</p>`,
+      });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Admin approved successfully", store, user });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error approving admin", error: error.message });
+  }
+};
+
+exports.rejectAdmin = async (req, res) => {
+  try {
+    const { storeId } = req.body;
+
+    // find store with owner details
+    const store = await Store.findById(storeId).populate("ownerId");
+    if (!store) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
+    const user = store.ownerId;
+
+    // delete store and user
+    await Store.findByIdAndDelete(storeId);
+    await User.findByIdAndDelete(user._id);
+
+    // send rejection email
+    await sendEmail({
+      to: user.email,
+      subject: "VibeEver - Admin Application Rejected",
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <h2>Hello ${user.fullName},</h2>
+            <p>We regret to inform you that your application to become an Admin at <b>VibeEver</b> has been rejected.</p>
+            <p>If you believe this is a mistake, please contact our support team.</p>
+          </body>
+        </html>
+      `,
+    });
+
+    res.status(200).json({
+      message: "Admin rejected and data deleted successfully",
+      deletedUser: user._id,
+      deletedStore: storeId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error rejecting admin",
+      error: error.message,
+    });
   }
 };

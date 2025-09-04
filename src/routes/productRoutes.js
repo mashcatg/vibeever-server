@@ -13,7 +13,9 @@ const {
 const router = express.Router();
 
 router.get('/',protect,  getProducts);
+
 router.get('/products-home',   getProductfREE);
+
 router.get('/:id', protect, getProduct);
 
 // Admin only routes

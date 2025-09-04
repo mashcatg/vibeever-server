@@ -3,46 +3,46 @@ const User = require('../models/User');
 
 const isAdmin = async (req, res, next) => {
   try {
-
-    console.log(req.headers);
-    // Get token from header
-    const token = req.headers.authorization
-    console.log(token ,"token");
-
+    const token = req.headers.authorization;
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'No token provided' 
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
       });
     }
 
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Get user from database
-    const user = await User.findById(decoded.id).select('-password');
-
+    //  user
+    const user = await User.findById(decoded.id).select("-password");
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'User not found' 
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
       });
-    } 
-     console.log(user?.role);
-    // Check if user is admin or superadmin
-    if (user.role === 'admin' || user.role === 'superadmin') {
+    }
+
+    //  role
+    if (user.role === "admin" || user.role === "superadmin") {
       req.user = user;
-      next();
+
+      
+      if (user.storeId) {
+        req.storeId = user.storeId;
+      }
+
+      return next();
     } else {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Access denied. Admin rights required.' 
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Admin rights required.",
       });
     }
   } catch (error) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid token' 
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token",
+      error: error.message,
     });
   }
 };
