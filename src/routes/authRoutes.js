@@ -13,11 +13,12 @@ const {
   googleAuthCallback,
   changePassword,
   getAllUsers,
-  testGoogleAuth,
-  applyAdmin,
+  
   getAllApplications,
   approveStoreAndAdmin,
-  rejectAdmin
+  rejectAdmin,
+  applyStore,
+  verifyOtp
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminAuth');
@@ -62,7 +63,9 @@ router.get("/users" , isAdmin , getAllUsers  )
 
 //----------- store code here 
 
-router.post("/applyStore" , applyAdmin  )
+router.post("/applyStore" , applyStore)
+
+router.post("/verifyOtp" , verifyOtp)
 
 router.get("/getRequestedStore"  , getAllApplications )
 

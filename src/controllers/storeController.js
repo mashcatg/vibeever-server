@@ -27,6 +27,33 @@ exports.getSingleStore = async (req, res) => {
 };
 
 
+exports.getSingleID = async (req, res) => {
+  try {
+    const { storeId } = req;;  
+
+    console.log("storeUsername", storeId);
+
+    const store = await storeModel.findById(storeId) 
+      .populate('ownerId', 'fullName email userName');
+
+    if (!store) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      store,
+    });
+  } catch (error) {
+    console.error("Error fetching store:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
 
 exports.getAllStores = async (req, res) => {
   try {

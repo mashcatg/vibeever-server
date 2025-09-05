@@ -8,6 +8,8 @@ const { generateToken } = require("../utils/generateJWT");
 const Order = require("../models/Order");
 const TempUser = require("../models/TempUser");
 const Store = require("../models/storeModel");
+const TempApplication = require("../models/tempApplication");
+const { console } = require("inspector");
 
 exports.register = async (req, res) => {
   try {
@@ -475,7 +477,9 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-exports.applyAdmin = async (req, res) => {
+
+ 
+exports.applyStore = async (req, res) => {
   try {
     const {
       fullName,
@@ -489,73 +493,146 @@ exports.applyAdmin = async (req, res) => {
     } = req.body;
 
     if (
-      (!fullName ||
-        !email ||
-        !password ||
-        !storeName ||
-        !storeDescription ||
-        !storeUsername,
-      !userName,
-      !attachments)
+      !fullName ||
+      !email ||
+      !password ||
+      !storeName ||
+      !storeDescription ||
+      !storeUsername ||
+      !userName ||
+      !attachments
     ) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
+      return res.status(400).json({ message: "Please provide all required fields" });
     }
+    console.log(storeUsername , "storeUsername")
+
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log("Existing user found:", existingUser);
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    const existingStoreUsername = await Store.findOne({ storeUsername });
 
-    console.log(existingStoreUsername, "existingStoreUsername");
+    const existingStoreUsername = await Store.findOne({ storeUsername });
     if (existingStoreUsername) {
       return res.status(400).json({ message: "Store username already taken" });
     }
 
-    // user
-    const salt = crypto.randomBytes(16).toString("hex");
-    const passwordHash = await bcrypt.hash(password + salt, 10);
+    console.log(existingStoreUsername, "existingStoreUsername") 
 
-    const user = new User({
-      fullName,
-      email,
-      userName,
+    // generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000); 
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); 
+
+    // update or insert temp record
+    const tempData = await TempApplication.findOneAndUpdate(
+      { email },
+      {
+        fullName,
+        email,
+        password,
+        userName,
+        storeName,
+        storeDescription,
+        attachments,
+        storeUsername,
+        otp,
+        otpExpiry,
+      },
+      { new: true, upsert: true }
+    );
+
+    // send email
+    await sendEmail({
+      to: email,
+      subject: "Verify Your Email - Vendor Application",
+      html: `
+        <h2>Hi ${fullName},</h2>
+        <p>Thanks for applying to become a vendor. Please verify your email by entering this OTP:</p>
+        <h3>${otp}</h3>
+        <p>This OTP is valid for 10 minutes.</p>
+      `,
+    });
+
+    res.status(200).json({
+      message: "OTP sent to email. Please verify to complete registration.",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error applying store", error: error.message });
+  }
+};
+
+
+//verify otp
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const tempData = await TempApplication.findOne({ email });
+    if (!tempData) {
+      return res.status(400).json({ message: "No pending application found" });
+    }
+    console.log(tempData ,  email, otp ,"sdfdsfdf"  )
+
+    if (tempData.otp !== Number(otp) || tempData.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    let user = await User.findOne({ email });
+    if (user) {
+      await TempApplication.deleteOne({ _id: tempData._id });
+      return res.status(200).json({ message: "User already registered", user });
+    }
+
+    const salt = crypto.randomBytes(16).toString("hex");
+    const passwordHash = await bcrypt.hash(tempData.password + salt, 10);
+
+    // create user
+    user = new User({
+      fullName: tempData.fullName,
+      email: tempData.email,
+      userName: tempData.userName,
       passwordHash,
       salt,
       role: "admin",
       isEmailVerified: true,
     });
 
-    const usersaves = await user.save();
-    console.log(usersaves);
+    const savedUser = await user.save();
 
+    // create store
     const store = new Store({
-      ownerId: user._id,
-      storeName,
-      storeDescription,
-      attachments,
-      storeUsername,
+      ownerId: savedUser._id,
+      storeName: tempData.storeName,
+      storeDescription: tempData.storeDescription,
+      attachments: tempData.attachments,
+      storeUsername: tempData.storeUsername,
       status: "pending",
     });
 
     await store.save();
 
-    user.storeId = store._id;
-    await user.save();
+    savedUser.storeId = store._id;
+    await savedUser.save();
 
-    res
-      .status(201)
-      .json({ message: "Vendor application submitted", user, store });
+    // delete temp data
+    await TempApplication.deleteOne({ _id: tempData._id });
+
+    res.status(201).json({
+      message: "Vendor application completed successfully",
+      user: savedUser,
+      store,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error applying as vendor", error: error.message });
+    res.status(500).json({ message: "Error verifying OTP", error: error.message });
   }
 };
+
+
+
+
+
+
 
 exports.getAllApplications = async (req, res) => {
   try {

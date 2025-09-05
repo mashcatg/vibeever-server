@@ -26,8 +26,9 @@ const isAdmin = async (req, res, next) => {
     if (user.role === "admin" || user.role === "superadmin") {
       req.user = user;
 
+      // console.log("admin storeid", user.storeId );
       
-      if (user.storeId) {
+      if (user?.storeId) {
         req.storeId = user.storeId;
       }
 
