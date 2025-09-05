@@ -1,6 +1,5 @@
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
-const { isAdmin } = require('../middleware/adminAuth');
+const {  isSuperAdmin } = require('../middleware/adminAuth');
 const { 
   createCategory,
   getCategories,
@@ -16,9 +15,10 @@ const router = express.Router();
 
 // public 
 router.get('/' , getCategories)
+router.route('/:id').get(getCategory)
 
 // All routes require admin access
-router.use(isAdmin);
+router.use(isSuperAdmin);
 
 router.post('/' , createCategory)
 //    
@@ -26,7 +26,7 @@ router.post('/' , createCategory)
 
 
 router.route('/:id')
-  .get(getCategory)
+  
   .put(updateCategory)
   .delete(deleteCategory);
 

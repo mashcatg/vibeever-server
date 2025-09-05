@@ -45,10 +45,15 @@ app.use(passport.initialize());
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+
 app.use('/api/cart', cartRoutes);
+
 app.use('/api/orders', orderRoutes);
+
 app.use('/api/coupons', couponRoutes);
+
 app.use('/api/profile', profileRoutes);
+
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/wishlist', wishlistRoutes);
 

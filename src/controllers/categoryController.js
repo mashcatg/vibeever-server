@@ -1,17 +1,6 @@
 const Category = require('../models/Category');
 
-// Add this helper function at the top of the file
-const generateUniqueSlug = (baseSlug, existingSlugs) => {
-  let slug = baseSlug;
-  let counter = 1;
-  
-  while (existingSlugs.includes(slug)) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-  
-  return slug;
-};
+ 
 
 const generateUniqueSubcategorySlug = async (categoryId, baseSlug) => {
   const category = await Category.findById(categoryId);
