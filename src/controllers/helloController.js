@@ -44,7 +44,7 @@ exports.createHello = async (req, res) => {
 exports.getHello = async (req, res) => {
   try {
     let helps;
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'superadmin') {
       helps = await helloModel.find().sort({  createdAt: -1});
     } else {
       helps = await helloModel.find({ email: req.user.email  })

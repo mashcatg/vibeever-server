@@ -14,4 +14,8 @@ storeRoute.get("/:storeUsername",  getSingleStore);
 
 
 
+// update store
+
+
+
 module.exports = storeRoute;

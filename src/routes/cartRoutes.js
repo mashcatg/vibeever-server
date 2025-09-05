@@ -16,6 +16,7 @@ router.get('/', getCart);
 router.post('/add', addToCart);
 router.delete('/remove/:productId', removeFromCart);
 router.post('/apply-coupon', applyCoupon);
-router.put('/update-quantity', updateCartItemQuantity);
+
+// router.put('/update-quantity', updateCartItemQuantity);
 
 module.exports = router;

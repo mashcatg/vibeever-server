@@ -54,10 +54,13 @@ exports.getCart = async (req, res) => {
   }
 };
 
-// Improved add to cart with proper validation
 exports.addToCart = async (req, res) => {
   try {
     const { productId, quantity = 1 } = req.body;
+
+    if(!productId){
+      return res.status(400).json({ message: 'Product ID is required' });
+    }
 
     // Validate product exists and is published
     const product = await Product.findOne({ 
@@ -81,7 +84,7 @@ exports.addToCart = async (req, res) => {
       );
 
       if (existingItemIndex !== -1) {
-        cart.items[existingItemIndex].quantity += quantity;
+        return res.status(400).json({ message: 'Product already in cart' });
       } else {
         cart.items.push({ product: productId, quantity });
       }
@@ -94,7 +97,6 @@ exports.addToCart = async (req, res) => {
     
     await cart.save();
     
-    // Populate cart items before sending response
     await cart.populate('items.product');
     await cart.populate('coupon');
     
@@ -103,6 +105,7 @@ exports.addToCart = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // Remove from cart
 exports.removeFromCart = async (req, res) => {
