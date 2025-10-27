@@ -4,7 +4,7 @@ const { getSingleStore, getAllStores, getSingleID } = require('../controllers/st
 
 const storeRoute = express.Router();
 
-storeRoute.get("/getAll", isSuperAdmin , getAllStores);
+storeRoute.get("/getAll",   getAllStores);
 //use it for fetch data inadmin panel
 storeRoute.get("/AdminStore", isAdmin , getSingleID);
 

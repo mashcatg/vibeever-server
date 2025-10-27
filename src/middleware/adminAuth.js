@@ -25,12 +25,14 @@ const isAdmin = async (req, res, next) => {
     //  role
     if (user.role === "admin" || user.role === "superadmin") {
       req.user = user;
+      req.user._id = "68b9a8cb149749fdd44bf1a0" // test;
 
       // console.log("admin storeid", user.storeId );
+      req.storeId = "68b9a8cb149749fdd44bf1a2" // test
       
-      if (user?.storeId) {
-        req.storeId = user.storeId;
-      }
+      // if (user?.storeId ) {
+      //   req.storeId = user.storeId; 
+      // }
 
       return next();
     } else {

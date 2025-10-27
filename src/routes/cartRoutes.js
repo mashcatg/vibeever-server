@@ -20,3 +20,4 @@ router.post('/apply-coupon', applyCoupon);
 // router.put('/update-quantity', updateCartItemQuantity);
 
 module.exports = router;
+

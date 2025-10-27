@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
+const storeModel = require('../models/storeModel');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
@@ -8,7 +9,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 //checkout 
 exports.createCheckoutSession = async (req, res) => {
   try {
-    const cart = await Cart.findOne({ user: req.user._id })
+    const cart = await Cart.findOne({ user: req.user._id }) 
       .populate('items.product')
       .populate('coupon');
 
@@ -109,71 +110,92 @@ exports.createDirectCheckoutSession = async (req, res) => {
 };
 
 // Process successful payment and create order
+
 exports.processPayment = async (req, res) => {
   try {
-    const { sessionId } = req.body; 
+    const { sessionId } = req.body;
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    // Check if it's a direct purchase
-    if (session.metadata.isDirectPurchase === 'true') {
-      const product = await Product.findById(session.metadata.productId);
-      
-      // Create order for single product
+    // ⚡ Direct product purchase
+    if (session.metadata.isDirectPurchase === "true") {
+      const product = await Product.findById(session.metadata.productId).populate("storeId");
+      if (!product) return res.status(404).json({ message: "Product not found" });
+
       const order = await Order.create({
         user: session.metadata.userId,
-        items: [{
-          product: product._id,
-          price: product.finalPrice,
-          quantity: 1
-        }],
+        items: [
+          {
+            product: product._id,
+            price: product.finalPrice,
+            quantity: 1,
+          },
+        ],
         subtotal: product.finalPrice,
         total: product.finalPrice,
         paymentId: session.payment_intent,
-        paymentMethod: 'stripe',
-        status: 'completed',
-        downloads: [{
-          product: product._id,
-          downloadCount: 0
-        }]
+        paymentMethod: "stripe",
+        status: "completed",
       });
+
+      // 💰 Add money to Store (Vendor)
+      const store = product.storeId;
+      if (store) {
+        store.walletBalance = (store.walletBalance || 0) + product.finalPrice;
+        store.totalEarnings = (store.totalEarnings || 0) + product.finalPrice;
+        await store.save();
+      }
 
       return res.json(order);
     }
 
-    const cart = await Cart.findById(session.metadata.cartId) 
+    // Normal Cart Checkout
+    const cart = await Cart.findById(session.metadata.cartId)
+      .populate("items.product")
+      .populate("coupon");
 
-      .populate('items.product')
-      .populate('coupon');
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-    // Create order
-    const order = await Order.create({ 
+    const order = await Order.create({
       user: session.metadata.userId,
-      items: cart.items.map(item => ({
+      items: cart.items.map((item) => ({
         product: item.product._id,
         price: item.product.finalPrice,
-        quantity: item.quantity
+        quantity: item.quantity,
       })),
       coupon: cart.coupon,
       subtotal: cart.subtotal,
       discount: cart.discount,
       total: cart.total,
       paymentId: session.payment_intent,
-      paymentMethod: 'stripe',
-      status: 'completed',
-      downloads: cart.items.map(item => ({
-        product: item.product._id,
-        downloadCount: 0
-      }))
+      paymentMethod: "stripe",
+      status: "completed",
     });
 
-    // Clear cart
-    await Cart.findByIdAndDelete(cart._id); 
+  for (const item of cart.items) {
+  const amount = item.product.finalPrice * item.quantity;
+   const data = await storeModel.findByIdAndUpdate(
+    item.product.storeId,
+    {
+      $inc: {
+        walletBalance: amount,
+        totalEarnings: amount
+      }
+    },
+    { new: true, runValidators: false } 
+  );
+  console.log("Updated store data:", data);
+}
 
-    res.json(order); 
-  } catch (error) {  
-    res.status(400).json({ message: error.message }); 
+
+    // 🧹 Clear cart
+    await Cart.findByIdAndDelete(cart._id);
+
+    res.json(order);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
+
 
 // Get orders with filtering (admin)
 exports.getOrders = async (req, res) => { 

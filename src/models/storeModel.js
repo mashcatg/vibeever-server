@@ -18,7 +18,6 @@ const storeSchema = new mongoose.Schema(
     },
     storeUsername: { type: String, unique: true, required: true },
 
-
     storeLogo: {
       type: String,
       default:
@@ -34,6 +33,18 @@ const storeSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
+    },
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
+    totalEarnings: {
+      type: Number,
+      default: 0,
+    },
+    withdrawn: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }
