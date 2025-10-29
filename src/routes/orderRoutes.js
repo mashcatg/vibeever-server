@@ -8,7 +8,8 @@ const {
   getAnalytics,
   getUserPurchases,
   downloadProduct,
-  createDirectCheckoutSession
+  createDirectCheckoutSession,
+  
 } = require('../controllers/orderController');
 
 const router = express.Router();
@@ -17,13 +18,13 @@ const router = express.Router();
 router.post('/create-checkout-session', protect, createCheckoutSession );
 router.post('/process-payment', protect, processPayment );
 
+// single 
+router.post('/directStripe', protect, createDirectCheckoutSession);
+
 // User purchase routes
 router.get('/purchases', protect, getUserPurchases);
 router.get('/download/:orderId/:productId', protect, downloadProduct);
 
-
-// single 
-router.post('/directStripe', protect, createDirectCheckoutSession);
 
 
 

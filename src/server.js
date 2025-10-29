@@ -19,6 +19,10 @@ const profileRoutes = require('./routes/profileRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const helloRoutes = require('./routes/helloRoutes');
 
+// Dodo Payments routes
+const dodoRoutes = require('./routes/dodoRoutes');
+const dodoWebhookRoutes = require('./routes/dodoWebhookRoutes');
+
 const app = express();
 
 // Connect to database
@@ -30,10 +34,13 @@ app.use(cors({ origin: process.env.CORS_ORIGIN, credentials: true }));
 app.use(morgan('dev'));
 
 // Special raw body parsing for Stripe webhooks
-app.post('/api/webhook', 
-  express.raw({ type: 'application/json' }), 
+app.post('/api/webhook',
+  express.raw({ type: 'application/json' }),
   handleWebhook
 );
+
+// Dodo Payments webhooks (must be mounted BEFORE express.json)
+app.use('/api/webhooks', dodoWebhookRoutes);
 
 // Regular middleware for other routes
 app.use(express.json());
@@ -51,9 +58,11 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/wishlist', wishlistRoutes);
 
-// hello route 
+// hello route
 app.use('/api/hello' , helloRoutes)
 
+// Dodo Payments checkout/session routes
+app.use('/api/dodo', dodoRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

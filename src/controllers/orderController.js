@@ -1,126 +1,146 @@
-const Order = require('../models/Order');
-const Cart = require('../models/Cart');
-const Product = require('../models/Product');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// const Order = require('../models/Order');
+// const Cart = require('../models/Cart');
+
+import DodoPayments from 'dodopayments';
+import Cart from '../models/Cart.js';
+import Order from '../models/Order.js';
+import Product from '../models/Product.js';
+
+// const Product = require('../models/Product');
+// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
 
 //checkout 
-exports.createCheckoutSession = async (req, res) => {
+export const createCheckoutSession = async (req, res) => {
   try {
     const cart = await Cart.findOne({ user: req.user._id })
       .populate('items.product')
       .populate('coupon');
 
+      console.log("cart", cart);
+
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    // Create line items for Stripe with explicit USD currency
-    const lineItems = cart.items.map(item => ({
-      price_data: {
-        currency: 'usd',
-        unit_amount: Math.round(item.product.finalPrice * 100),
-        product_data: {
-          name: item.product.title,
-          description: item.product.description
-        }
-      },
-      quantity: item.quantity
+    const product_cart = cart.items.map(item => ({
+      product_id: item.product.dodoProductId,  
+      quantity: 1
+      
     }));
+    console.log("product_cart", product_cart);
 
-    // Create Stripe session with strict USD currency settings
-    const session = await stripe.checkout.sessions.create({
-      customer_email: req.user.email,
-      line_items: lineItems,
-      mode: 'payment',
-      currency: 'usd',
-      locale: 'en', // Force English locale
-      payment_method_types: ['card'],
-      payment_method_options: {
-        card: {
-          request_three_d_secure: 'automatic'
-        }
-      },
-      success_url: `${process.env.FRONTEND_URL}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/cart`,
-      metadata: {
-        userId: req.user._id.toString(),
-        cartId: cart._id.toString()
-      }
-    });
+    const dodo = new DodoPayments({ bearerToken: process.env.DODO_PAYMENTS_API_KEY , 
+  environment: process.env.NODE_ENV === "development" ? 'test_mode' : 'live_mode',
 
-    res.json({ url: session.url });
+     });
+      // console.log("dodo" ,dodo , );
+
+    // sessoionn
+   const session = await dodo.checkoutSessions.create({
+  product_cart,
+  customer: {
+    email: req.user.email,
+    name: req.user.name
+  },
+  return_url: `${process.env.FRONTEND_URL}/checkout/success`,
+  cancel_url: `${process.env.FRONTEND_URL}/cart`,
+  metadata: {
+    userId: req.user._id.toString(),
+    cartId: cart._id.toString()
+  }
+});
+
+session.return_url = `${process.env.FRONTEND_URL}/checkout/success?sessionId=${session.session_id}`;
+
+      console.log("session" ,session ,session?.session_id )
+
+    res.json({ url: session.checkout_url }); // Dodo’s session URL
   } catch (error) {
     res.status(400).json({ message: error.message }); 
   }
 };
+ 
 
-// Single product direct checkout
-exports.createDirectCheckoutSession = async (req, res) => {
+export const createDirectCheckoutSession = async (req, res) => {
   try {
     const { productId } = req.body;
 
-    // Find product
-    const product = await Product.findById(productId);
+    //  find    const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: "Product not found" });
     }
-
-    // Create line item for Stripe
-    const lineItem = {
-      price_data: {
-        currency: 'usd',
-        unit_amount: Math.round(product.finalPrice * 100),
-        product_data: {
-          name: product.title,
-          description: product.description
-        }
+    const dodo = new DodoPayments({
+      bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+      environment:
+        process.env.NODE_ENV === "development" ? "test_mode" : "live_mode",
+    });
+ 
+    const product_cart = [
+      {
+        product_id: product.dodoProductId, // must be created beforehand in Dodo Dashboard
+        quantity: 1,
       },
-      quantity: 1
-    };
-
-    // Create Stripe session
-    const session = await stripe.checkout.sessions.create({
-      customer_email: req.user.email,
-      line_items: [lineItem],
-      mode: 'payment',
-      currency: 'usd',
-      locale: 'en',
-      payment_method_types: ['card'],
-      payment_method_options: {
-        card: {
-          request_three_d_secure: 'automatic'
-        }
+    ];
+ 
+    const session = await dodo.checkoutSessions.create({
+      product_cart,
+      customer: {
+        email: req.user.email,
+        name: req.user.name,
       },
-      success_url: `${process.env.FRONTEND_URL}/checkout/success?sessionId={CHECKOUT_SESSION_ID}`,
+      return_url: `${process.env.FRONTEND_URL}/checkout/success`,
       cancel_url: `${process.env.FRONTEND_URL}/products/${productId}`,
       metadata: {
         userId: req.user._id.toString(),
         productId: productId,
-        isDirectPurchase: 'true'
-      }
+        isDirectPurchase: "true",
+      },
     });
+ 
+    session.return_url = `${process.env.FRONTEND_URL}/checkout/success?sessionId=${session.session_id}`;
 
-    res.json({ url: session.url });
+    console.log("Dodo Direct Session:", session);
+
+ 
+    res.json({ url: session.checkout_url });
   } catch (error) {
+    console.error("Dodo Direct Checkout Error:", error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// Process successful payment and create order
-exports.processPayment = async (req, res) => {
-  try {
-    const { sessionId } = req.body; 
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    // Check if it's a direct purchase
-    if (session.metadata.isDirectPurchase === 'true') {
-      const product = await Product.findById(session.metadata.productId);
+ 
+
+// Process 
+export const processPayment = async (req, res) => {
+  try {
+    const {  payment_id } = req.body; 
+    console.log(" payment_id",  payment_id);
+    const dodo = new DodoPayments({ bearerToken: process.env.DODO_PAYMENTS_API_KEY 
+      ,
+    environment: process.env.NODE_ENV === "development" ? 'test_mode' : 'live_mode',
+    });
+
+    // checkout session
+    const session = await dodo.payments.retrieve(payment_id);
+    console.log("session", session);
+
+  // if paid
+    if (session.status !== 'succeeded') {
+      return res.status(400).json({ message: 'Payment not completed.' });
+    }
+
+    const metadata = session.metadata || {};
+    
+    if (metadata.isDirectPurchase === 'true') {
+      const product = await Product.findById(metadata.productId);
       
       // Create order for single product
       const order = await Order.create({
-        user: session.metadata.userId,
+        user: metadata.userId,
         items: [{
           product: product._id,
           price: product.finalPrice,
@@ -128,8 +148,8 @@ exports.processPayment = async (req, res) => {
         }],
         subtotal: product.finalPrice,
         total: product.finalPrice,
-        paymentId: session.payment_intent,
-        paymentMethod: 'stripe',
+        paymentId: session.payment_id, 
+        paymentMethod: 'dodo',
         status: 'completed',
         downloads: [{
           product: product._id,
@@ -140,14 +160,17 @@ exports.processPayment = async (req, res) => {
       return res.json(order);
     }
 
-    const cart = await Cart.findById(session.metadata.cartId) 
-
+    // Otherwise, handle cart purchase
+    const cart = await Cart.findById(metadata.cartId)
       .populate('items.product')
       .populate('coupon');
 
-    // Create order
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found.' });
+    }
+
     const order = await Order.create({ 
-      user: session.metadata.userId,
+      user: metadata.userId,
       items: cart.items.map(item => ({
         product: item.product._id,
         price: item.product.finalPrice,
@@ -157,8 +180,8 @@ exports.processPayment = async (req, res) => {
       subtotal: cart.subtotal,
       discount: cart.discount,
       total: cart.total,
-      paymentId: session.payment_intent,
-      paymentMethod: 'stripe',
+      paymentId: session.payment_id, 
+      paymentMethod: 'dodo',
       status: 'completed',
       downloads: cart.items.map(item => ({
         product: item.product._id,
@@ -170,13 +193,15 @@ exports.processPayment = async (req, res) => {
     await Cart.findByIdAndDelete(cart._id); 
 
     res.json(order); 
+
   } catch (error) {  
     res.status(400).json({ message: error.message }); 
   }
 };
 
+
 // Get orders with filtering (admin)
-exports.getOrders = async (req, res) => { 
+export const getOrders = async (req, res) => { 
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -230,7 +255,7 @@ exports.getOrders = async (req, res) => {
 };
 
 // Get transaction analytics (admin)
-exports.getAnalytics = async (req, res) => {
+export const getAnalytics = async (req, res) => {
   try {
     const startDate = new Date(req.query.startDate || new Date().setMonth(new Date().getMonth() - 1));
     const endDate = new Date(req.query.endDate || Date.now());
@@ -284,7 +309,7 @@ exports.getAnalytics = async (req, res) => {
 };
 
 // Get user's purchased products
-exports.getUserPurchases = async (req, res) => {
+export const getUserPurchases = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -329,7 +354,7 @@ exports.getUserPurchases = async (req, res) => {
 };
 
 // Download product
-exports.downloadProduct = async (req, res) => {
+export const downloadProduct = async (req, res) => {
   try {
     const { orderId, productId } = req.params;
 

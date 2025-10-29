@@ -23,6 +23,7 @@ const ProductSchema = new mongoose.Schema({
   version: { type: String },
   benefits: [{type: String, trim: true }],
   files : [{ type: String, trim: true }],
+  dodoProductId : { type: String },
 
   tags: [{ type: String, trim: true }],
   thumbnailUrls: [{ type: String, required: true }],
