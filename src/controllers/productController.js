@@ -208,21 +208,77 @@ exports.createProduct = async (req, res) => {
 // Update product (admin only)
 exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    
+    // Find existing product in your database by ID
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.json(product);
+    // Prepare fields for Dodo update (if syncing to Dodo)
+    if (product.dodoProductId) {
+      const dodoUpdateFields = {};
+
+      // Map your update input to Dodo API field names
+      if (req.body.title) dodoUpdateFields.name = req.body.title;
+      if (req.body.description) dodoUpdateFields.description = req.body.description;
+
+      // Update the price if present
+      if (req.body.price) {
+        dodoUpdateFields.price = {
+          currency: "USD", // Or make this dynamic if needed
+          price: Math.round(Number(req.body.price) * 100), // always store in cents/minor unit
+          type: "one_time_price", // or "recurring_price" for subscriptions
+          purchasing_power_parity: false,
+          tax_inclusive: false
+        };
+
+        // If updating discount as well
+        let discountVal = 0;
+        if (req.body.discount && typeof req.body.discount === 'object') {
+          const { type, value } = req.body.discount;
+          if (type === "percentage") {
+            discountVal = Number(value) || 0;
+          } else if (type === "fixed" && req.body.price) {
+            // Convert fixed to percent
+            const cents = Math.round(Number(req.body.price) * 100);
+            discountVal = Math.round((Number(value) / (cents / 100)) * 100);
+          }
+        }
+        if (discountVal > 0) {
+          dodoUpdateFields.price.discount = discountVal;
+        }
+      }
+
+      // You can add more fields as needed: consult Dodo update docs
+
+      // Attempt Dodo update!
+      try {
+        await Dodoclient.products.update(
+          String(product.dodoProductId),  // Dodo product_id as first (string) argument
+          dodoUpdateFields
+        );
+      } catch (dodoErr) {
+        console.error('Dodo update error:', dodoErr?.response?.data || dodoErr);
+        return res.status(400).json({ message: 'Error updating Dodo product: ' + (dodoErr?.message || 'unknown error') });
+      }
+    }
+
+    // Update your local DB
+    // You may want to restrict which fields are updatable in your schema
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true } // return the updated doc
+    );
+
+    res.json(updatedProduct);
   } catch (error) {
+    console.error("Update product error:", error);
     res.status(400).json({ message: error.message });
   }
 };
+
+
 
 // Delete product (admin only)
 exports.deleteProduct = async (req, res) => {

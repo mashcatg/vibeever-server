@@ -14,8 +14,8 @@ const router = express.Router();
 router.get('/', protect, isAdmin, getCoupons);
 
 // Superadmin only routes
-router.post('/', protect, isSuperAdmin, createCoupon);
-router.put('/:id', protect, isSuperAdmin, updateCoupon);
-router.delete('/:id', protect, isSuperAdmin, deleteCoupon);
+router.post('/', protect, createCoupon);
+router.put('/:id', protect,  updateCoupon);
+router.delete('/:id', protect,  deleteCoupon);
 
 module.exports = router;

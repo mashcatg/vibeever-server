@@ -7,9 +7,18 @@ const CouponSchema = new mongoose.Schema({
     unique: true,
     uppercase: true,
   },
+  name:{
+    type: String,
+
+  },
+  dodoDiscountId:{
+    type: String,
+    required: true,
+
+  },
   discountType: {
     type: String,
-    enum: ['percentage', 'fixed'],
+    enum: ['percentage', 'flat'],
     required: true
   },
   discountValue: {
