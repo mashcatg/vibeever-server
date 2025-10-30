@@ -1,6 +1,7 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category'); // Add this at the top
 const mongoose = require('mongoose');
+const Dodoclient = require('../config/dodoClient');
 
 // Helper function for filtering
 const buildQuery = async (queryParams) => {
@@ -140,18 +141,69 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// Create product (admin only)
+// Create Product Controller (admin only)
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create({
-      ...req.body,
-      user: req.user._id
+    const { price, title, discount, description } = req.body;
+
+    let validDiscount = { type: null, value: 0 };
+    if (discount && typeof discount === "object") {
+      if (["percentage", "fixed"].includes(discount.type)) {
+        validDiscount.type = discount.type;
+        validDiscount.value = Number(discount.value) || 0;
+      }
+    }
+
+    const priceCents = Math.round(Number(price) * 100);  
+
+    //  discount  
+    let dodoDiscount = 0;
+    if (validDiscount.type === "percentage") {
+      dodoDiscount = validDiscount.value;  
+    } else if (validDiscount.type === "fixed" && priceCents) {
+      dodoDiscount = Math.round((validDiscount.value / (priceCents / 100)) * 100);
+    }
+
+    const Dodoproduct = await Dodoclient.products.create({
+      price: {
+        currency: "USD",
+        discount: dodoDiscount,           
+        price: priceCents,                 
+        purchasing_power_parity: false,
+        type: "one_time_price",
+        tax_inclusive: false,
+      },
+      name: title,
+      description: description,
+      tax_category: "digital_products",
     });
+
+    console.log("Dodo Product Created:", Dodoproduct);
+
+    const productData = {
+      ...req.body,
+      price: priceCents, 
+      user: req.user._id,
+      dodoProductId: Dodoproduct.product_id || Dodoproduct.id, 
+    };
+
+    if (validDiscount.type) {
+      productData.discount = validDiscount;
+    } else {
+      delete productData.discount;
+    }
+
+    const product = await Product.create(productData);
+    console.log("Product Created in DB:", product);
+
     res.status(201).json(product);
   } catch (error) {
+    console.error("Error creating product:", error);
     res.status(400).json({ message: error.message });
   }
 };
+
+
 
 // Update product (admin only)
 exports.updateProduct = async (req, res) => {

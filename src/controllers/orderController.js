@@ -5,6 +5,7 @@ import DodoPayments from 'dodopayments';
 import Cart from '../models/Cart.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import Dodoclient from '../config/dodoClient.js';
 
 // const Product = require('../models/Product');
 // const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -18,7 +19,7 @@ export const createCheckoutSession = async (req, res) => {
       .populate('items.product')
       .populate('coupon');
 
-      console.log("cart", cart);
+      console.log("cart", cart.items);
 
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
@@ -31,14 +32,10 @@ export const createCheckoutSession = async (req, res) => {
     }));
     console.log("product_cart", product_cart);
 
-    const dodo = new DodoPayments({ bearerToken: process.env.DODO_PAYMENTS_API_KEY , 
-  environment: process.env.NODE_ENV === "development" ? 'test_mode' : 'live_mode',
-
-     });
-      // console.log("dodo" ,dodo , );
+      
 
     // sessoionn
-   const session = await dodo.checkoutSessions.create({
+   const session = await Dodoclient.checkoutSessions.create({
   product_cart,
   customer: {
     email: req.user.email,
@@ -67,24 +64,21 @@ export const createDirectCheckoutSession = async (req, res) => {
   try {
     const { productId } = req.body;
 
-    //  find    const product = await Product.findById(productId);
+    //  find  
+      const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
-    const dodo = new DodoPayments({
-      bearerToken: process.env.DODO_PAYMENTS_API_KEY,
-      environment:
-        process.env.NODE_ENV === "development" ? "test_mode" : "live_mode",
-    });
+     
  
     const product_cart = [
       {
-        product_id: product.dodoProductId, // must be created beforehand in Dodo Dashboard
+        product_id: product.dodoProductId,  
         quantity: 1,
       },
     ];
  
-    const session = await dodo.checkoutSessions.create({
+    const session = await Dodoclient.checkoutSessions.create({
       product_cart,
       customer: {
         email: req.user.email,
@@ -119,13 +113,10 @@ export const processPayment = async (req, res) => {
   try {
     const {  payment_id } = req.body; 
     console.log(" payment_id",  payment_id);
-    const dodo = new DodoPayments({ bearerToken: process.env.DODO_PAYMENTS_API_KEY 
-      ,
-    environment: process.env.NODE_ENV === "development" ? 'test_mode' : 'live_mode',
-    });
+   
 
     // checkout session
-    const session = await dodo.payments.retrieve(payment_id);
+    const session = await Dodoclient.payments.retrieve(payment_id);
     console.log("session", session);
 
   // if paid
